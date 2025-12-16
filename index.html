@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JazzFlix - Streaming Demo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">JazzFlix</h1>
+            <nav class="nav">
+                <a href="#home">Home</a>
+                <a href="#library">Library</a>
+                <a href="#about">About</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <!-- Hero Section with Featured Video -->
+        <section class="hero" id="home">
+            <div class="container">
+                <h2 class="hero-title">Featured Content</h2>
+                <div class="video-container">
+                    <video id="mainPlayer" class="video-player" controls poster="assets/poster.jpg">
+                        <source src="assets/demo-video.mp4" type="video/mp4">
+                        <source src="assets/demo-video.webm" type="video/webm">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="video-info">
+                        <h3 class="video-title">Demo Streaming Content</h3>
+                        <p class="video-description">Experience high-quality streaming with JazzFlix. This is a demonstration of our streaming capabilities.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Video Library Section -->
+        <section class="library" id="library">
+            <div class="container">
+                <h2 class="section-title">Video Library</h2>
+                <div class="video-grid">
+                    <div class="video-card" data-video="assets/demo-video.mp4">
+                        <div class="video-thumbnail">
+                            <img src="assets/thumb1.jpg" alt="Video 1" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22%3E%3Crect fill=%22%23333%22 width=%22300%22 height=%22200%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EVideo 1%3C/text%3E%3C/svg%3E'">
+                            <div class="play-overlay">▶</div>
+                        </div>
+                        <h3 class="card-title">Sample Video 1</h3>
+                        <p class="card-description">Demo content showcasing streaming quality</p>
+                    </div>
+
+                    <div class="video-card" data-video="assets/demo-video.mp4">
+                        <div class="video-thumbnail">
+                            <img src="assets/thumb2.jpg" alt="Video 2" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22%3E%3Crect fill=%22%23444%22 width=%22300%22 height=%22200%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EVideo 2%3C/text%3E%3C/svg%3E'">
+                            <div class="play-overlay">▶</div>
+                        </div>
+                        <h3 class="card-title">Sample Video 2</h3>
+                        <p class="card-description">High-quality streaming demonstration</p>
+                    </div>
+
+                    <div class="video-card" data-video="assets/demo-video.mp4">
+                        <div class="video-thumbnail">
+                            <img src="assets/thumb3.jpg" alt="Video 3" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22%3E%3Crect fill=%22%23555%22 width=%22300%22 height=%22200%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EVideo 3%3C/text%3E%3C/svg%3E'">
+                            <div class="play-overlay">▶</div>
+                        </div>
+                        <h3 class="card-title">Sample Video 3</h3>
+                        <p class="card-description">Seamless playback experience</p>
+                    </div>
+
+                    <div class="video-card" data-video="assets/demo-video.mp4">
+                        <div class="video-thumbnail">
+                            <img src="assets/thumb4.jpg" alt="Video 4" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22%3E%3Crect fill=%22%23666%22 width=%22300%22 height=%22200%22/%3E%3Ctext fill=%22%23fff%22 font-family=%22Arial%22 font-size=%2220%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EVideo 4%3C/text%3E%3C/svg%3E'">
+                            <div class="play-overlay">▶</div>
+                        </div>
+                        <h3 class="card-title">Sample Video 4</h3>
+                        <p class="card-description">Adaptive streaming technology</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section class="about" id="about">
+            <div class="container">
+                <h2 class="section-title">About JazzFlix</h2>
+                <div class="about-content">
+                    <p>JazzFlix is a demonstration streaming platform showcasing modern web-based video streaming capabilities. Built with HTML5, CSS3, and JavaScript, it demonstrates:</p>
+                    <ul>
+                        <li>HTML5 video player with native controls</li>
+                        <li>Responsive design for all devices</li>
+                        <li>Modern UI/UX principles</li>
+                        <li>Dynamic content loading</li>
+                        <li>Smooth video playback</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 JazzFlix Demo. Built for streaming demonstration purposes.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
