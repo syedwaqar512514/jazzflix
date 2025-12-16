@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+           http://www.liquibase.org/xml/ns/dbchangelog
+           http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.15.xsd">
+
+    <changeSet id="1" author="waqar">
+        <createTable tableName="TBL_USER">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true"/>
+            </column>
+
+            <column name="email" type="VARCHAR(150)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+
+            <column name="password" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="name" type="VARCHAR(100)"/>
+
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true"/>
+
+            <column name="created_at" type="TIMESTAMP"
+                    defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="2" author="waqar">
+        <createTable tableName="TBL_VIDEO">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="original_file_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="object_key" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+
+            <column name="content_type" type="VARCHAR(150)"/>
+
+            <column name="size_bytes" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="bucket" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="3" author="waqar">
+        <addColumn tableName="TBL_VIDEO">
+            <column name="thumbnail_object_key" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="4" author="waqar">
+        <createTable tableName="TBL_VIDEO_QUALITY">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="video_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="quality" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="resolution" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="bitrate" type="VARCHAR(20)"/>
+            <column name="object_key" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="size_bytes" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="content_type" type="VARCHAR(150)"/>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableName="TBL_VIDEO_QUALITY"
+            baseColumnNames="video_id"
+            referencedTableName="TBL_VIDEO"
+            referencedColumnNames="id"
+            constraintName="fk_video_quality_video"/>
+    </changeSet>
+
+    <changeSet id="5" author="waqar">
+        <addColumn tableName="TBL_VIDEO">
+            <column name="preferred_quality" type="VARCHAR(20)" defaultValue="720p">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

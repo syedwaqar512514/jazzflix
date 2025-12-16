@@ -1,0 +1,23 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package org.jazz.jazzflix.exception;
+
+/**
+ * Exception class for data already exist
+ *
+ * @author Shahzad Sadiq
+ * @since 29/09/2023
+ */
+
+public class InvalidRuleException extends RuntimeException {
+
+    public InvalidRuleException(String message) {
+        super(message);
+    }
+
+    public InvalidRuleException() {
+    }
+}
