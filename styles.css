@@ -277,6 +277,15 @@ body {
     }
 }
 
+/* Error message styling */
+.error-message {
+    background-color: #ff6b6b;
+    padding: 15px;
+    margin-top: 10px;
+    border-radius: 5px;
+    color: #ffffff;
+}
+
 /* Smooth scrolling */
 html {
     scroll-behavior: smooth;

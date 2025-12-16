@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Get all video cards
     const videoCards = document.querySelectorAll('.video-card');
     
+    // Setup image fallbacks for thumbnails
+    setupImageFallbacks();
+    
     // Add click event to video cards
     videoCards.forEach(card => {
         card.addEventListener('click', function() {
@@ -58,7 +61,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
-                    mainPlayer.currentTime = Math.min(mainPlayer.duration, mainPlayer.currentTime + 10);
+                    if (!isNaN(mainPlayer.duration)) {
+                        mainPlayer.currentTime = Math.min(mainPlayer.duration, mainPlayer.currentTime + 10);
+                    }
                     break;
                 case 'ArrowUp':
                     e.preventDefault();
@@ -107,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show user-friendly error message
             const videoInfo = document.querySelector('.video-info');
             const errorMsg = document.createElement('div');
-            errorMsg.style.cssText = 'background-color: #ff6b6b; padding: 15px; margin-top: 10px; border-radius: 5px;';
+            errorMsg.className = 'error-message';
             errorMsg.textContent = 'Unable to load video. Please check if the video file exists in the assets folder.';
             videoInfo.appendChild(errorMsg);
         });
@@ -129,14 +134,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Add loading state for video cards
-    const thumbnails = document.querySelectorAll('.video-thumbnail img');
-    thumbnails.forEach(img => {
-        img.addEventListener('load', function() {
-            this.style.opacity = '1';
-        });
-    });
-    
     // Console welcome message
     console.log('%c🎬 Welcome to JazzFlix Demo! 🎬', 'font-size: 20px; color: #667eea; font-weight: bold;');
     console.log('%cKeyboard shortcuts:', 'font-size: 14px; color: #999;');
@@ -146,3 +143,31 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('F - Fullscreen');
     console.log('M - Mute/Unmute');
 });
+
+// Helper function to generate SVG fallback for thumbnails
+function generateFallbackSVG(text, bgColor) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200">
+        <rect fill="${bgColor}" width="300" height="200"/>
+        <text fill="#fff" font-family="Arial" font-size="20" x="50%" y="50%" text-anchor="middle" dy=".3em">${text}</text>
+    </svg>`;
+    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
+// Setup image fallbacks for all thumbnail images
+function setupImageFallbacks() {
+    const thumbnails = document.querySelectorAll('.video-thumbnail img');
+    const colors = ['#333', '#444', '#555', '#666'];
+    
+    thumbnails.forEach((img, index) => {
+        img.addEventListener('error', function() {
+            const fallbackText = this.getAttribute('data-fallback-text') || 'Video';
+            const bgColor = colors[index % colors.length];
+            this.src = generateFallbackSVG(fallbackText, bgColor);
+        });
+        
+        // Set opacity for loaded images
+        img.addEventListener('load', function() {
+            this.style.opacity = '1';
+        });
+    });
+}
