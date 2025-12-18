@@ -122,4 +122,13 @@
         </addColumn>
     </changeSet>
 
+    <changeSet id="6" author="shakeel-jamali">
+        <addColumn tableName="TBL_VIDEO_QUALITY">
+            <column name="quality_bucket" type="VARCHAR(20)" defaultValue="metadata">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+
 </databaseChangeLog>
