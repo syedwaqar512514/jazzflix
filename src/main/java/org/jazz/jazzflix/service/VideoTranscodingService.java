@@ -56,17 +56,17 @@ public class VideoTranscodingService {
         }
     }
 
-    @Async
-    @Transactional
-    public void transcodeVideoAsync(UUID videoId, String originalObjectKey, String originalContentType) {
-        log.info("Starting async DASH transcoding for video {} with object key {}", videoId, originalObjectKey);
-
-        try {
-            createDashManifest(videoId, originalObjectKey, originalContentType);
-        } catch (Exception e) {
-            log.error("Failed to create DASH manifest for video {}", videoId, e);
-        }
-    }
+//    @Async
+//    @Transactional
+//    public void transcodeVideoAsync(UUID videoId, String originalObjectKey, String originalContentType) {
+//        log.info("Starting async DASH transcoding for video {} with object key {}", videoId, originalObjectKey);
+//
+//        try {
+//            createDashManifest(videoId, originalObjectKey, originalContentType);
+//        } catch (Exception e) {
+//            log.error("Failed to create DASH manifest for video {}", videoId, e);
+//        }
+//    }
 
     @Async
     @Transactional
@@ -108,7 +108,7 @@ public class VideoTranscodingService {
             createDashWithFFmpeg(tempInputPath, tempOutputDir);
 
             // Upload DASH files to MinIO
-            uploadDashFiles(videoId, tempOutputDir);
+            //uploadDashFiles(videoId, tempOutputDir);
 
             // Create database records for DASH qualities
             createDashQualityRecords(videoId, tempOutputDir);
@@ -269,6 +269,7 @@ public class VideoTranscodingService {
         outputReader.setDaemon(true);
         outputReader.start();
 
+
         try {
             boolean finished = process.waitFor(20, TimeUnit.MINUTES);
             if (!finished) {
@@ -300,9 +301,9 @@ public class VideoTranscodingService {
         }
     }
 
-    private void uploadDashFiles(UUID videoId, Path outputDir) throws Exception {
+    private void uploadDashFiles(UUID videoId, Path outputDir, String quality) throws Exception {
         log.info("Uploading DASH files to MinIO for video {}", videoId);
-
+        String bucket = resolveBucketForQuality(quality);
         String basePath = "videos/" + videoId + "/dash/";
         Files.walk(outputDir)
             .filter(Files::isRegularFile)
@@ -313,17 +314,17 @@ public class VideoTranscodingService {
                     long size = Files.size(filePath);
                     try (FileInputStream fis = new FileInputStream(filePath.toFile())) {
                         PutObjectArgs putArgs = PutObjectArgs.builder()
-                                .bucket(minioProperties.getBucket())
+                                .bucket(bucket)
                                 .object(objectKey)
                                 .stream(fis, size, -1)
                                 .contentType(getContentType(fileName))
                                 .build();
 
                         minioClient.putObject(putArgs);
-                        log.info("Uploaded DASH file: {}", objectKey);
+                        log.info("Uploaded DASH file: {} to {} bucket", objectKey, bucket);
                     }
                 } catch (Exception e) {
-                    log.error("Failed to upload DASH file: {}", filePath, e);
+                    log.error("Failed to upload DASH file: {} to {} bucket", filePath, bucket, e);
                 }
             });
     }
@@ -367,26 +368,27 @@ public class VideoTranscodingService {
         }
     }
 
-    @Transactional
-    protected void createDashQualityRecord(UUID videoId, Path outputDir, String qualityName) throws Exception {
-        log.info("Creating DASH quality record for video {} quality {}", videoId, qualityName);
+
+    protected void createDashQualityRecord(UUID videoId, Path outputDir, String quality) throws Exception {
+        log.info("Creating DASH quality record for video {} quality {}", videoId, quality);
 
         String manifestKey = "videos/" + videoId + "/dash/manifest.mpd";
-
-        VideoQuality quality = VideoQuality.valueOf("Q_" + qualityName.toUpperCase());
+        String qualityBucket = "videos-q"+quality.toLowerCase();
+        VideoQuality vQuality = VideoQuality.valueOf("Q_"+quality.toUpperCase());
 
         TblVideoQuality videoQuality = new TblVideoQuality();
         videoQuality.setVideoId(videoId);
-        videoQuality.setQuality(quality.name);
-        videoQuality.setResolution(quality.resolution);
-        videoQuality.setBitrate(quality.bitrate);
+        videoQuality.setQuality(vQuality.name);
+        videoQuality.setResolution(vQuality.resolution);
+        videoQuality.setBitrate(vQuality.bitrate);
         videoQuality.setObjectKey(manifestKey); // All qualities point to the same manifest
         videoQuality.setSizeBytes(0L); // Size not applicable for manifest
         videoQuality.setContentType("application/dash+xml");
+        videoQuality.setQualityBucketName(qualityBucket);
         videoQuality.setStatus("COMPLETED");
 
         qualityPersistenceService.saveQuality(videoQuality);
-        log.info("Created DASH quality record: {} for video {}", quality.name, videoId);
+        log.info("Created DASH quality record: {} for video {}", vQuality.name, videoId);
     }
 
     private void createDashForQuality(UUID videoId, String originalObjectKey, String contentType, String quality) throws Exception {
@@ -410,14 +412,14 @@ public class VideoTranscodingService {
             log.info("Downloaded video to temp file: {}", tempInputPath);
 
             // Create temp directory for DASH output
-            tempOutputDir = Files.createTempDirectory("dash-quality-");
+            tempOutputDir = Files.createTempDirectory(quality+"_dash-quality-");
             log.info("Created temp output directory: {}", tempOutputDir);
 
             // Run FFmpeg to create DASH for this quality
             createDashWithFFmpegForQuality(tempInputPath, tempOutputDir, quality);
 
             // Upload DASH files to MinIO
-            uploadDashFiles(videoId, tempOutputDir);
+            uploadDashFiles(videoId, tempOutputDir, quality);
 
             // Create database record for this quality
             createDashQualityRecord(videoId, tempOutputDir, quality);
@@ -473,4 +475,9 @@ public class VideoTranscodingService {
                 downloadUrl
         );
     }
+
+    public String resolveBucketForQuality(String quality){
+        return this.minioProperties.getQualityBuckets().get(quality.toLowerCase());
+    }
+
 }

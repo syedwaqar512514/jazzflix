@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: jazz-flix
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 1234
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
@@ -57,8 +57,8 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin123
     command: server /data --console-address ":9001"
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9080:9000"
+      - "9081:9001"
     volumes:
       - minio_data:/data
     networks:

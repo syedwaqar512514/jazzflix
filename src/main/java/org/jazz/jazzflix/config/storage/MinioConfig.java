@@ -25,7 +25,14 @@ public class MinioConfig {
 
             if (properties.isEnsureBucket()) {
                 try {
+                    // ensure bucket for original files exists
                     ensureBucketExists(client, properties.getBucket());
+                    // ensure metadata bucket exists
+                    ensureBucketExists(client, properties.getMetadataBucket());
+                    // ensure quality buckets exists
+                    for(String qBucket : properties.getQualityBuckets().values()){
+                        ensureBucketExists(client, qBucket);
+                    }
                 } catch (Exception ex) {
                     log.warn("Failed to verify/create MinIO bucket '{}'. MinIO may not be available. Error: {}", 
                             properties.getBucket(), ex.getMessage());
