@@ -93,7 +93,7 @@
             display: none;
         }
     </style>
-    <script defer src="/jazz/js/jazzflix-upload.js"></script>
+    <script defer src="common-auth.js"></script>
 </head>
 <body>
     <div class="container">
@@ -158,6 +158,7 @@
             try {
                 // Start upload
                 const response = await fetch('/jazz/video/api/upload', {
+                    headers: { "Authorization": "Bearer " + getToken() },
                     method: 'POST',
                     body: formData
                 });

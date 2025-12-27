@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Register | JazzFlix</title>
+</head>
+<body>
+<h2>🎬 Register on JazzFlix</h2>
+
+<input id="firstName" placeholder="First Name">
+<input id="lastName" placeholder="Last Name">
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+
+<select id="gender">
+  <option>MALE</option>
+  <option>FEMALE</option>
+  <option>OTHER</option>
+  <option>PREFER_NO_TO_SAY</option>
+</select>
+
+<input id="dob" placeholder="1995-12-31">
+
+<select id="roles" multiple>
+  <option>ADMIN</option>
+  <option>CREATOR</option>
+  <option>VIEWER</option>
+</select>
+
+<button onclick="register()">Register</button>
+<button onclick="goLogin()">Go to Login</button>
+
+<script>
+  async function register() {
+    const roles = Array.from(document.getElementById("roles").selectedOptions)
+            .map(o => o.value);
+
+    const res = await fetch("/jazz/api/users/register", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        data: {
+          firstName: firstName.value,
+          lastName: lastName.value,
+          email: email.value,
+          password: password.value,
+          gender: gender.value,
+          dateOfBirth: dob.value,
+          roles: roles
+        }
+      })
+    });
+
+    const json = await res.json();
+    alert(json.message);
+  }
+
+  function goLogin() {
+    window.location.href = "/jazz/auth.html";
+  }
+</script>
+</body>
+</html>

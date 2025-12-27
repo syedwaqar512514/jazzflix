@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User Dashboard</title>
+  <script src="common-auth.js" defer></script>
+  <script src="https://cdn.dashjs.org/latest/dash.all.min.js"></script>
+</head>
+<body onload="requireAuth()">
+
+<h2>👤 User Dashboard</h2>
+
+<button onclick="viewProfile()">My Profile</button>
+<button onclick="loadMyVideos()">My Videos</button>
+<button onclick="goUpload()">Upload Video</button>
+<button onclick="updateProfile()">Update Profile</button>
+<button onclick="logout()">Logout</button>
+
+<hr>
+<!-- DASH Video Player -->
+<div id="videoPlayerSection" style="display:none; margin-top:20px;">
+  <h3>🎥 Video Player</h3>
+  <video id="videoPlayer" controls style="width:100%; max-width:800px;"></video>
+</div>
+
+
+<div id="profile"></div>
+<div id="videos"></div>
+
+<script>
+  async function viewProfile() {
+    const res = await fetch("/jazz/api/users/me", {
+      headers: { "Authorization": "Bearer " + getToken() }
+    });
+    const json = await res.json();
+    document.getElementById("profile").innerHTML =
+            `<pre>${JSON.stringify(json.data, null, 2)}</pre>`;
+  }
+
+  function goUpload() {
+    window.location.href = "/jazz/upload-progress.html";
+  }
+
+  function updateProfile() {
+    window.location.href = "/jazz/update-user.html";
+  }
+
+  // New Functionality
+  let dashPlayer = null;
+
+  /* =======================
+     Load My Videos
+  ======================= */
+  async function loadMyVideos() {
+    const res = await fetch("/jazz/video/api/getAll", {
+      headers: { "Authorization": "Bearer " + getToken() }
+    });
+
+    const json = await res.json();
+    if (!json.success) {
+      alert("Failed to load videos");
+      return;
+    }
+
+    renderVideos(json.data);
+  }
+
+  /* =======================
+     Render Video List
+  ======================= */
+  function renderVideos(videos) {
+    document.getElementById("videoPlayerSection").style.display = "block";
+
+    let html = `
+        <h3>📁 My Uploaded Videos</h3>
+        <table border="1" cellpadding="8" cellspacing="0" width="100%">
+            <tr>
+                <th>Thumbnail</th>
+                <th>Video ID</th>
+                <th>Manifest</th>
+                <th>Size (MB)</th>
+                <th>Bucket</th>
+                <th>Play</th>
+            </tr>
+    `;
+
+    videos.forEach(v => {
+      const sizeMB = (v.sizeBytes / (1024 * 1024)).toFixed(2);
+
+      html += `
+            <tr>
+                <td>
+                    <img src="${v.thumbnail}"
+                         width="120"
+                         style="border-radius:5px">
+                </td>
+                <td>${v.id}</td>
+                <td style="word-break:break-all">${buildManifestUrl(v.id)}</td>
+                <td>${v.sizeBytes} MB</td>
+                <td>${v.bucket}</td>
+                <td>
+                    <button onclick="playDash('${v.id}')">
+                        ▶ Play
+                    </button>
+                </td>
+                <td>
+                  <select onchange="playDash('${v.id}', this.value)">
+                    <option value="360p">360p</option>
+                    <option value="720p">720p</option>
+                    <option value="1080p">1080p</option>
+                  </select>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += "</table>";
+
+    document.getElementById("videos").innerHTML = html;
+  }
+
+  function buildManifestUrl(videoId, quality = "360p") {
+    return `http://localhost:9080/videos-q${quality}/videos/${videoId}/dash/manifest.mpd`;
+  }
+
+
+
+  /* =======================
+     Play DASH Stream
+  ======================= */
+  function playDash(videoId) {
+    const videoElement = document.getElementById("videoPlayer");
+    const manifestUrl = buildManifestUrl(videoId);
+
+    if (dashPlayer) {
+      dashPlayer.reset();
+    }
+
+    dashPlayer = dashjs.MediaPlayer().create();
+    dashPlayer.initialize(videoElement, manifestUrl, true);
+
+    dashPlayer.on(dashjs.MediaPlayer.events.ERROR, e => {
+      console.error("DASH error", e);
+      alert("Failed to play video");
+    });
+  }
+
+
+
+</script>
+</body>
+</html>

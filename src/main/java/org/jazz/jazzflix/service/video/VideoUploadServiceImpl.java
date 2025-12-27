@@ -5,16 +5,14 @@ import io.minio.PutObjectArgs;
 import org.jazz.jazzflix.config.storage.MinioProperties;
 import org.jazz.jazzflix.dto.VideoUploadResponse;
 import org.jazz.jazzflix.dto.WatchModel;
+import org.jazz.jazzflix.dto.video.VideoAssetDto;
 import org.jazz.jazzflix.dto.video.VideoUploadEvent;
 import org.jazz.jazzflix.dto.video.VideoTranscodingEvent;
 import org.jazz.jazzflix.entity.video.TblVideoAssest;
 import org.jazz.jazzflix.exception.InvalidDataException;
 import org.jazz.jazzflix.exception.VideoStorageException;
 import org.jazz.jazzflix.repository.video.TblVideoAssestRepository;
-import org.jazz.jazzflix.service.MinioService;
-import org.jazz.jazzflix.service.ProgressMultipartFile;
-import org.jazz.jazzflix.service.ProgressService;
-import org.jazz.jazzflix.service.VideoTranscodingService;
+import org.jazz.jazzflix.service.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,11 +34,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Service
 public class VideoUploadServiceImpl implements VideoUploadService {
@@ -57,6 +53,7 @@ public class VideoUploadServiceImpl implements VideoUploadService {
     private final String videoTranscodingTopic;
     private final ProgressService progressService;
     private final VideoTranscodingService transcodingService;
+    private final CustomUserDetailsService userDetailsService;
 
     public VideoUploadServiceImpl(MinioClient minioClient,
                                   MinioProperties minioProperties, MinioService minioService,
@@ -66,7 +63,7 @@ public class VideoUploadServiceImpl implements VideoUploadService {
                                   @Value("${app.kafka.topics.video-upload:video.uploaded}") String videoUploadTopic,
                                   @Value("${app.kafka.topics.video-transcoding:video.transcoding}") String videoTranscodingTopic,
                                   ProgressService progressService,
-                                  VideoTranscodingService transcodingService) {
+                                  VideoTranscodingService transcodingService, CustomUserDetailsService userDetailsService) {
         this.minioClient = minioClient;
         this.minioProperties = minioProperties;
         this.minioService = minioService;
@@ -77,10 +74,11 @@ public class VideoUploadServiceImpl implements VideoUploadService {
         this.videoTranscodingTopic = videoTranscodingTopic;
         this.progressService = progressService;
         this.transcodingService = transcodingService;
+        this.userDetailsService = userDetailsService;
     }
 
     @Override
-    public VideoUploadResponse handleUpload(MultipartFile file) {
+    public VideoUploadResponse handleUpload(MultipartFile file, UUID userId) {
         // Generate unique upload ID for progress tracking
         String uploadId = UUID.randomUUID().toString();
 
@@ -126,6 +124,7 @@ public class VideoUploadServiceImpl implements VideoUploadService {
         asset.setStatus("UPLOADED");
         asset.setBucket(minioProperties.getBucket());
         asset.setThumbnailObjectKey(thumbnailObjectKey);
+        asset.setOwnerId(userId);
 
         TblVideoAssest savedAsset = tblVideoAssestRepository.save(asset);
 
@@ -187,6 +186,24 @@ public class VideoUploadServiceImpl implements VideoUploadService {
         );
 
         return new VideoUploadResponse(watchModel, uploadId);
+    }
+
+    @Override
+    public List<VideoAssetDto> getAllVideosByUserId(UUID userId) {
+        List<VideoAssetDto> videoList = new ArrayList<>();
+        List<TblVideoAssest> videos = this.tblVideoAssestRepository.findAllByOwnerId(userId);
+        videoList = videos.stream()
+                .map(video -> {
+                    return VideoAssetDto.builder()
+                            .id(video.getId())
+                            .ownerId(video.getOwnerId())
+                            .thumbnail(video.getThumbnailObjectKey())
+                            .manifestPath(video.getId().toString())
+                            .bucket(video.getBucket())
+                            .build();
+                })
+                .toList();
+        return videoList;
     }
 
     private void uploadToMinio(MultipartFile file, String objectKey, String uploadId) {
@@ -416,5 +433,7 @@ public class VideoUploadServiceImpl implements VideoUploadService {
 
         log.info("Thumbnail created at {}", outputImage);
     }
+
+
 
 }

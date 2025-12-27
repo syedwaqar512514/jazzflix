@@ -1,12 +1,17 @@
 package org.jazz.jazzflix.config.security;
 
+import org.jazz.jazzflix.config.security.jwt.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -16,6 +21,12 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -27,12 +38,42 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(sm ->
+                        sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/video/api/**").permitAll()
-                        .requestMatchers("/v1/api/**").permitAll()
-                        .requestMatchers("/api/**").permitAll()
+                        // Public Endpoint
+                        .requestMatchers(
+//                                "/jazz/js/common-auth.js",
+                                "/common-auth.js",
+                                "/upload-progress.html",
+                                "/auth.html",
+                                "/login.html",
+                                "/dashboard-user.html",
+                                "/dashboard-admin.html",
+                                "/manage-user.html",
+                                "/update-user.html",
+                                "/jazz/register.html",
+                                "/auth/login",
+                                "/api/users/register",
+                                "/video/api/dash/**",
+                                "/video/api/thumbnail/**",
+                                "/video/api/upload",
+                                "/jazz/auth/login",
+                                "/jazz/video/api/getAll",
+                                "/jazz/video/api/upload"
+                        ).permitAll()
+
+                        // Upload & Management
+//                        .requestMatchers("/jazz/video/api/upload").hasRole("CREATOR")
+
+                        //Only Admins
+//                        .requestMatchers("/users/**", "/dashboard-admin.html").hasRole("ADMIN")
+
+                        //Everything else
                         .anyRequest().permitAll()
-                );
+                )
+                // Add jwt filter
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -48,5 +89,10 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 }
