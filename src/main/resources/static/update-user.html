@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Update User</title>
+  <script src="/common-auth.js" defer></script>
+</head>
+<body onload="requireAuth()">
+
+<h2>✏ Update Profile</h2>
+
+<input id="password" placeholder="New Password">
+<input id="firstName">
+<input id="lastName">
+<input id="dob">
+
+<button onclick="update()">Save</button>
+<button onclick="goBack()">Back</button>
+
+<script>
+  async function update() {
+    await fetch("/jazz/api/users/me", {
+      method: "PUT",
+      headers: {
+        "Authorization": "Bearer " + getToken(),
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        data: {
+          password: password.value,
+          firstName: firstName.value,
+          lastName: lastName.value,
+          dateOfBirth: dob.value
+        }
+      })
+    });
+    alert("Updated");
+  }
+
+  function goBack() {
+    window.history.back();
+  }
+</script>
+</body>
+</html>

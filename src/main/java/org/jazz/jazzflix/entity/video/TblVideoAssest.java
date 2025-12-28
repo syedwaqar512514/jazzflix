@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import lombok.Data;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -12,6 +13,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "TBL_VIDEO")
+@Data
 public class TblVideoAssest {
 
     @Id
@@ -23,6 +25,9 @@ public class TblVideoAssest {
 
     @Column(name = "object_key", nullable = false, unique = true, length = 255)
     private String objectKey;
+
+    @Column(name = "owner_id", nullable = false)
+    private UUID ownerId;
 
     @Column(name = "content_type", length = 150)
     private String contentType;
@@ -43,78 +48,6 @@ public class TblVideoAssest {
     private Timestamp createdAt;
 
     public TblVideoAssest() {
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public void setId(UUID id) {
-        this.id = id;
-    }
-
-    public String getOriginalFileName() {
-        return originalFileName;
-    }
-
-    public void setOriginalFileName(String originalFileName) {
-        this.originalFileName = originalFileName;
-    }
-
-    public String getObjectKey() {
-        return objectKey;
-    }
-
-    public void setObjectKey(String objectKey) {
-        this.objectKey = objectKey;
-    }
-
-    public String getContentType() {
-        return contentType;
-    }
-
-    public void setContentType(String contentType) {
-        this.contentType = contentType;
-    }
-
-    public long getSizeBytes() {
-        return sizeBytes;
-    }
-
-    public void setSizeBytes(long sizeBytes) {
-        this.sizeBytes = sizeBytes;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getBucket() {
-        return bucket;
-    }
-
-    public void setBucket(String bucket) {
-        this.bucket = bucket;
-    }
-
-    public String getThumbnailObjectKey() {
-        return thumbnailObjectKey;
-    }
-
-    public void setThumbnailObjectKey(String thumbnailObjectKey) {
-        this.thumbnailObjectKey = thumbnailObjectKey;
-    }
-
-    public Timestamp getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(Timestamp createdAt) {
-        this.createdAt = createdAt;
     }
 
     @PrePersist
