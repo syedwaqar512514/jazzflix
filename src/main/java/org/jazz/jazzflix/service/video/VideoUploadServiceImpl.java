@@ -199,6 +199,7 @@ public class VideoUploadServiceImpl implements VideoUploadService {
                             .ownerId(video.getOwnerId())
                             .thumbnail(video.getThumbnailObjectKey())
                             .manifestPath(video.getId().toString())
+                            .sizeBytes((int)video.getSizeBytes())
                             .bucket(video.getBucket())
                             .build();
                 })
