@@ -29,7 +29,7 @@ public class CustomUserDetails implements UserDetails {
         this.first_name = user.getUserProfile().getFirstName();
         this.enabled = user.isEnabled();
         this.authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_"+role))
+                .map(role -> new SimpleGrantedAuthority("ROLE_"+role.getUserRole().name()))
                 .collect(Collectors.toList());
     }
 

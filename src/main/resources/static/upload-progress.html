@@ -128,6 +128,8 @@
             <br>
             <button id="loadDashBtn" class="btn" style="margin-top: 10px;">Load DASH Stream</button>
         </div>
+        <button onclick="goBack()">Back</button>
+
     </div>
 
     <script>
@@ -350,6 +352,10 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('JazzFlix Video Upload initialized');
         });
+
+        function goBack() {
+            window.history.back();
+        }
     </script>
 
     <!-- DASH.js for MPEG-DASH playback -->
