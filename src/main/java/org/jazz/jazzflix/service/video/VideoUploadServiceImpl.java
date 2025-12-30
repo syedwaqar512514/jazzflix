@@ -132,7 +132,7 @@ public class VideoUploadServiceImpl implements VideoUploadService {
         progressService.updateStatus(uploadId, "TRANSCODING", "Starting video transcoding...");
 
         // Send transcoding tasks to Kafka for each quality
-        List<String> qualities = Arrays.asList("1080p", "720p", "480p", "360p");
+        List<String> qualities = Arrays.asList("1080p");
         for (String quality : qualities) {
             VideoTranscodingEvent transcodingEvent = new VideoTranscodingEvent(savedAsset.getId(), objectKey, file.getContentType(), quality);
             transcodingKafkaTemplate.send(videoTranscodingTopic, savedAsset.getId().toString() + "-" + quality, transcodingEvent)

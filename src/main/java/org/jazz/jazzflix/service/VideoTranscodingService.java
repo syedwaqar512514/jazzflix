@@ -151,24 +151,36 @@ public class VideoTranscodingService {
         List<String> command = Arrays.asList(
             "ffmpeg",
             "-i", inputFile.toString(),
-            // Video representations
+            // Map video stream FOUR times
             "-map", "0:v",
+            "-map", "0:v",
+            "-map", "0:v",
+            "-map", "0:v",
+
+            // Video codec
             "-c:v", "libx264",
+            "-profile:v", "main",
+            "-preset", "fast",
+
+            // Video Bitrate & resolutions
             "-b:v:0", "5000k", "-s:v:0", "1920x1080", // 1080p
             "-b:v:1", "3000k", "-s:v:1", "1280x720",  // 720p
             "-b:v:2", "1500k", "-s:v:2", "854x480",   // 480p
             "-b:v:3", "800k",  "-s:v:3", "640x360",   // 360p
-            // Audio representation
+
+            // Audio (Map ONCE)
             "-map", "0:a",
             "-c:a", "aac",
             "-b:a", "128k",
-            // DASH options
+
+            // DASH Settings
             "-f", "dash",
             "-seg_duration", "10",
             "-use_template", "1",
             "-use_timeline", "1",
             "-init_seg_name", "init-$RepresentationID$.m4s",
             "-media_seg_name", "chunk-$RepresentationID$-$Number$.m4s",
+            // Adaptation sets (CRITICAL)
             "-adaptation_sets", "id=0,streams=v id=1,streams=a",
             outputDir.resolve("manifest.mpd").toString()
         );
