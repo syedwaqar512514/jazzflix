@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Account</title>
+    <script src="/common-auth.js"></script>
+</head>
+<body onload="requireAuth()">
+
+<h2>⚠ Account Actions</h2>
+
+<button onclick="deactivate()">Deactivate</button>
+<button onclick="activate()">Activate</button>
+<button onclick="deleteAccount()">Delete</button>
+<button onclick="goBack()">Back</button>
+
+<script>
+    async function deactivate() {
+        await fetch("/jazz/api/users/deactivate", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + getToken() }
+        });
+        alert("Deactivated");
+    }
+
+    async function deleteAccount() {
+        await fetch("/jazz/api/users", {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + getToken() }
+        });
+        logout();
+    }
+
+    function goBack() {
+        window.history.back();
+    }
+</script>
+</body>
+</html>

@@ -35,6 +35,9 @@ public class TblVideoQuality {
     @Column(name = "object_key", nullable = false, length = 255)
     private String objectKey;
 
+    @Column(name = "quality_bucket", nullable = false, length = 20)
+    private String qualityBucketName;
+
     @Column(name = "size_bytes", nullable = false)
     private long sizeBytes;
 

@@ -1,9 +1,19 @@
 package org.jazz.jazzflix.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.sql.Timestamp;
 
 @Entity
 @Table(name = "TBL_USER")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class TblUser {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,7 +32,7 @@ public class TblUser {
     private Boolean enabled = true;
 
     @Column(name = "created_at", columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    private java.sql.Timestamp createdAt;
+    private Timestamp createdAt;
 
     // Getters and setters
     public Long getId() { return id; }
@@ -35,6 +45,6 @@ public class TblUser {
     public void setName(String name) { this.name = name; }
     public Boolean getEnabled() { return enabled; }
     public void setEnabled(Boolean enabled) { this.enabled = enabled; }
-    public java.sql.Timestamp getCreatedAt() { return createdAt; }
-    public void setCreatedAt(java.sql.Timestamp createdAt) { this.createdAt = createdAt; }
+    public Timestamp getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
 }

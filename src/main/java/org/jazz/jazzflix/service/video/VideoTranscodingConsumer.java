@@ -18,11 +18,27 @@ public class VideoTranscodingConsumer {
         this.transcodingService = transcodingService;
     }
 
-    @KafkaListener(topics = "${app.kafka.topics.video-transcoding:video.transcoding}", groupId = "transcoding-group")
-    public void handleTranscoding(VideoTranscodingEvent event) {
+    @KafkaListener(topics = "${app.kafka.topics.video-transcoding-single-bitrate:video.transcoding.single.bitrate}", groupId = "transcoding-group")
+    public void handleTranscodingSingleBitrate(VideoTranscodingEvent event) {
         log.info("Received transcoding event for video {} quality {}", event.getVideoId(), event.getQuality());
         try {
-            transcodingService.transcodeVideoQualityAsync(event.getVideoId(), event.getOriginalObjectKey(), event.getContentType(), event.getQuality());
+            // Transconding for Single bitrate (Quality)
+//            transcodingService.transcodeVideoQualityAsync(event.getVideoId(), event.getOriginalObjectKey(), event.getContentType(), event.getQuality());
+            // Transconding for Multi bitrate (Quality)
+            transcodingService.transcodeVideoAsync(event.getVideoId(), event.getOriginalObjectKey(), event.getContentType(), event.getQuality());
+        } catch (Exception e) {
+            log.error("Failed to process transcoding for video {} quality {}", event.getVideoId(), event.getQuality(), e);
+        }
+    }
+
+    @KafkaListener(topics = "${app.kafka.topics.video-transcoding-multi-bitrate:video.transcoding.multi.bitrate}", groupId = "transcoding-group")
+    public void handleTranscodingMultiBitrate(VideoTranscodingEvent event) {
+        log.info("Received transcoding event for video {} quality {}", event.getVideoId(), event.getQuality());
+        try {
+            // Transconding for Single bitrate (Quality)
+//            transcodingService.transcodeVideoQualityAsync(event.getVideoId(), event.getOriginalObjectKey(), event.getContentType(), event.getQuality());
+            // Transconding for Multi bitrate (Quality)
+            transcodingService.transcodeVideoAsync(event.getVideoId(), event.getOriginalObjectKey(), event.getContentType());
         } catch (Exception e) {
             log.error("Failed to process transcoding for video {} quality {}", event.getVideoId(), event.getQuality(), e);
         }

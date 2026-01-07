@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login | JazzFlix</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            display: flex;
+            justify-content: center;
+            padding-top: 80px;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            width: 380px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            text-align: center;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 12px;
+        }
+        button {
+            background: #007bff;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        button:hover { background: #0056b3; }
+
+        .secondary {
+            background: #6c757d;
+        }
+        .link-btn {
+            background: transparent;
+            color: #007bff;
+            border: none;
+            margin-top: 5px;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🎬 JazzFlix Login</h2>
+
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+
+    <button onclick="login()">Login</button>
+
+    <button class="secondary" onclick="goRegister()">Register</button>
+    <button class="link-btn" onclick="goForgot()">Forgot Password?</button>
+
+    <div id="msg"></div>
+</div>
+
+<script>
+    const API = "/jazz/auth";
+
+    function showMsg(text, success = false) {
+        const msg = document.getElementById("msg");
+        msg.className = success ? "success" : "error";
+        msg.innerText = text;
+    }
+
+    function saveToken(token) {
+        localStorage.setItem("jwt", token);
+    }
+
+    function decodeJwt(token) {
+        const payload = token.split(".")[1];
+        return JSON.parse(atob(payload));
+    }
+
+    async function login() {
+        const res = await fetch(`${API}/login`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                data: {
+                    email: email.value,
+                    password: password.value
+                }
+            })
+        });
+
+        const json = await res.json();
+
+        if (!res.ok || !json.success) {
+            showMsg(json.message || "Login failed");
+            return;
+        }
+
+        const token = json.data.accessToken;
+        saveToken(token);
+
+        const jwtData = decodeJwt(token);
+        const roles = jwtData.roles || [];
+
+        showMsg("Login successful", true);
+
+        // 🔁 Redirect based on role
+        setTimeout(() => {
+            if (roles.includes("ROLE_ADMIN")) {
+                window.location.href = "/jazz/dashboard-admin.html";
+            } else {
+                window.location.href = "/jazz/dashboard-user.html";
+            }
+        }, 800);
+    }
+
+    function goRegister() {
+        window.location.href = "/jazz/register.html";
+    }
+
+    function goForgot() {
+        window.location.href = "/jazz/forgot-password.html";
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <script src="common-auth.js" defer></script>
+</head>
+<body onload="requireAuth()">
+
+<h2>🛡 ADMIN Dashboard</h2>
+<label>Logged in as ADMIN</label>
+
+<button onclick="listUsers()">View Users</button>
+<button onclick="listVideos()">View All Videos</button>
+<button onclick="logout()">Logout</button>
+
+<hr>
+<div id="adminData"></div>
+
+<script>
+    async function listUsers() {
+        const res = await fetch("/jazz/api/admin/users", {
+            headers: { "Authorization": "Bearer " + getToken() }
+        });
+        const json = await res.json();
+        adminData.innerHTML = `<pre>${JSON.stringify(json.data, null, 2)}</pre>`;
+    }
+
+    async function listVideos() {
+        const res = await fetch("/jazz/api/admin/videos", {
+            headers: { "Authorization": "Bearer " + getToken() }
+        });
+        const json = await res.json();
+        adminData.innerHTML = `<pre>${JSON.stringify(json.data, null, 2)}</pre>`;
+    }
+</script>
+</body>
+</html>
