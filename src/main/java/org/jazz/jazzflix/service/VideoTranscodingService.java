@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.io.FileOutputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,21 +57,21 @@ public class VideoTranscodingService {
         }
     }
 
-//    @Async
-//    @Transactional
-//    public void transcodeVideoAsync(UUID videoId, String originalObjectKey, String originalContentType) {
-//        log.info("Starting async DASH transcoding for video {} with object key {}", videoId, originalObjectKey);
-//
-//        try {
-//            createDashManifest(videoId, originalObjectKey, originalContentType);
-//        } catch (Exception e) {
-//            log.error("Failed to create DASH manifest for video {}", videoId, e);
-//        }
-//    }
+    @Async
+    @Transactional
+    public void transcodeVideoAsync(UUID videoId, String originalObjectKey, String originalContentType) {
+        log.info("Starting async DASH transcoding for video {} with object key {}", videoId, originalObjectKey);
+
+        try {
+            createDashManifest(videoId, originalObjectKey);
+        } catch (Exception e) {
+            log.error("Failed to create DASH manifest for video {}", videoId, e);
+        }
+    }
 
     @Async
     @Transactional
-    public void transcodeVideoQualityAsync(UUID videoId, String originalObjectKey, String originalContentType, String quality) {
+    public void transcodeVideoAsync(UUID videoId, String originalObjectKey, String originalContentType, String quality) {
         log.info("Starting async transcoding for video {} quality {} with object key {}", videoId, quality, originalObjectKey);
 
         try {
@@ -80,7 +81,7 @@ public class VideoTranscodingService {
         }
     }
 
-    private void createDashManifest(UUID videoId, String originalObjectKey, String contentType) throws Exception {
+    private void createDashManifest(UUID videoId, String originalObjectKey) throws Exception {
         log.info("Creating DASH manifest for video {}", videoId);
         Path tempInputPath = null;
         Path tempOutputDir = null;
@@ -88,10 +89,11 @@ public class VideoTranscodingService {
         try {
             // Download original video
             log.info("Downloading original video from MinIO: {}", originalObjectKey);
+            String originalObjectKeyPath = originalObjectKey.split("\\.")[0]+"/"+originalObjectKey;
             tempInputPath = Files.createTempFile("input-", ".mp4");
             GetObjectArgs getArgs = GetObjectArgs.builder()
                     .bucket(minioProperties.getBucket())
-                    .object(originalObjectKey)
+                    .object(originalObjectKeyPath)
                     .build();
 
             try (InputStream inputStream = minioClient.getObject(getArgs);
@@ -108,10 +110,10 @@ public class VideoTranscodingService {
             createDashWithFFmpeg(tempInputPath, tempOutputDir);
 
             // Upload DASH files to MinIO
-            //uploadDashFiles(videoId, tempOutputDir);
+            uploadDashFiles(originalObjectKey.split("\\.")[0], tempOutputDir);
 
             // Create database records for DASH qualities
-            createDashQualityRecords(videoId, tempOutputDir);
+            createDashQualityRecords(videoId, originalObjectKey.split("\\.")[0]);
 
             log.info("Successfully created DASH manifest for video {}", videoId);
 
@@ -144,46 +146,63 @@ public class VideoTranscodingService {
     }
 
     private void createDashWithFFmpeg(Path inputFile, Path outputDir) throws Exception {
-        log.info("Running FFmpeg to create DASH manifest");
+        log.info("Running FFmpeg to create Multi-bitrate DASH manifest");
 
-        // FFmpeg command for multi-bitrate DASH
-        // This creates multiple representations in one command
-        List<String> command = Arrays.asList(
-            "ffmpeg",
-            "-i", inputFile.toString(),
-            // Map video stream FOUR times
-            "-map", "0:v",
-            "-map", "0:v",
-            "-map", "0:v",
-            "-map", "0:v",
-
-            // Video codec
-            "-c:v", "libx264",
-            "-profile:v", "main",
-            "-preset", "fast",
-
-            // Video Bitrate & resolutions
-            "-b:v:0", "5000k", "-s:v:0", "1920x1080", // 1080p
-            "-b:v:1", "3000k", "-s:v:1", "1280x720",  // 720p
-            "-b:v:2", "1500k", "-s:v:2", "854x480",   // 480p
-            "-b:v:3", "800k",  "-s:v:3", "640x360",   // 360p
-
-            // Audio (Map ONCE)
-            "-map", "0:a",
-            "-c:a", "aac",
-            "-b:a", "128k",
-
-            // DASH Settings
-            "-f", "dash",
-            "-seg_duration", "10",
-            "-use_template", "1",
-            "-use_timeline", "1",
-            "-init_seg_name", "init-$RepresentationID$.m4s",
-            "-media_seg_name", "chunk-$RepresentationID$-$Number$.m4s",
-            // Adaptation sets (CRITICAL)
-            "-adaptation_sets", "id=0,streams=v id=1,streams=a",
-            outputDir.resolve("manifest.mpd").toString()
+        // Create records for each quality representation
+        List<VideoQuality> qualities = Arrays.asList(
+                VideoQuality.Q_1080P,
+                VideoQuality.Q_720P,
+                VideoQuality.Q_480P,
+                VideoQuality.Q_360P
         );
+
+        // FFmpeg command for multi-bitrate DASH without -Filter-complex (RECOMMENDED)
+//        List<String> command = buildDashCommandWithoutFilterComplex(inputFile, outputDir, qualities);
+        // FFmpeg command for multi-bitrate DASH using -Filter-complex (ADVANCED)
+        List<String> command = buildDashCommandWithFilterComplex(inputFile, outputDir, qualities);
+
+
+        // This creates multiple representations in one command
+//        List<String> command = Arrays.asList(
+//            "ffmpeg",
+//            "-i", inputFile.toString(),
+//            // Map video stream FOUR times
+//            "-map", "0:v",
+//            "-map", "0:v",
+//            "-map", "0:v",
+//            "-map", "0:v",
+//            "-map", "0:a",
+//
+//            // Video codec
+//            "-c:v", "libx264",
+//            "-profile:v:0", "main",
+//            "-profile:v:1", "baseline480",
+//            "-profile:v:2", "baseline720",
+//            "-profile:v:3", "baseline1080",
+//            "-preset", "fast",
+//
+//            // Video Bitrate & resolutions
+//            "-b:v:0", "800k",  "-s:v:3", "640x360",   // 360p
+//            "-b:v:1", "1500k", "-s:v:2", "854x480",   // 480p
+//            "-b:v:2", "3000k", "-s:v:1", "1280x720",  // 720p
+//            "-b:v:3", "5000k", "-s:v:0", "1920x1080", // 1080p
+//
+//            // Audio (Map ONCE)
+////            "-map", "0:a",
+//            "-c:a", "aac",
+//            "-b:a", "128k",
+//
+//            // DASH Settings
+//            "-f", "dash",
+//            "-seg_duration", "10",
+//            "-use_template", "1",
+//            "-use_timeline", "1",
+//            "-init_seg_name", "init-$RepresentationID$.m4s",
+//            "-media_seg_name", "chunk-$RepresentationID$-$Number$.m4s",
+//            // Adaptation sets (CRITICAL)
+//            "-adaptation_sets", "id=0,streams=v id=1,streams=a",
+//            outputDir.resolve("manifest.mpd").toString()
+//        );
 
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(true);
@@ -205,7 +224,7 @@ public class VideoTranscodingService {
 
         try {
             // Wait for completion with timeout to prevent indefinite hang
-            boolean finished = process.waitFor(30, TimeUnit.MINUTES);
+            boolean finished = process.waitFor(20, TimeUnit.MINUTES);
             if (!finished) {
                 process.destroyForcibly();
                 throw new RuntimeException("FFmpeg timed out and was killed");
@@ -236,33 +255,40 @@ public class VideoTranscodingService {
         }
     }
 
-    private void createDashWithFFmpegForQuality(Path inputFile, Path outputDir, String quality) throws Exception {
+    private void createDashWithFFmpeg(Path inputFile, Path outputDir, String quality) throws Exception {
         log.info("Running FFmpeg to create DASH for quality {}", quality);
 
         VideoQuality videoQuality = VideoQuality.valueOf("Q_" + quality.toUpperCase());
 
-        // FFmpeg command for single bitrate DASH
-        List<String> command = Arrays.asList(
-            "ffmpeg",
-            "-i", inputFile.toString(),
-            // Video representation
-            "-map", "0:v",
-            "-c:v", "libx264",
-            "-b:v", videoQuality.bitrate, "-s:v", videoQuality.scale,
-            // Audio representation
-            "-map", "0:a",
-            "-c:a", "aac",
-            "-b:a", "128k",
-            // DASH options
-            "-f", "dash",
-            "-seg_duration", "10",
-            "-use_template", "1",
-            "-use_timeline", "1",
-            "-init_seg_name", "init-$RepresentationID$.m4s",
-            "-media_seg_name", "chunk-$RepresentationID$-$Number$.m4s",
-            "-adaptation_sets", "id=0,streams=v id=1,streams=a",
-            outputDir.resolve("manifest.mpd").toString()
-        );
+        // FFmpeg command for list of qualities bitrates without -Filter-complex (RECOMMENDED)
+//        List<String> command = buildDashCommandWithoutFilterComplex(inputFile, outputDir, List.of(videoQuality));
+        // FFmpeg command for list of qualities bitrates using -Filter-complex (ADVANCED)
+        List<String> command = buildDashCommandWithFilterComplex(inputFile, outputDir, List.of(videoQuality));
+
+        //FFmpeg command for single bitrage quality
+//        List<String> command = Arrays.asList(
+//            "ffmpeg",
+//            "-i", inputFile.toString(),
+//            // Video representation
+//            "-map", "0:v",
+//            "-c:v", "libx264",
+//            "-b:v", videoQuality.bitrate, "-s:v", videoQuality.scale,
+//            // Audio representation
+//            "-map", "0:a",
+//            "-c:a", "aac",
+//            "-b:a", "128k",
+//            // DASH options
+//            "-f", "dash",
+//            "-seg_duration", "10",
+//            "-use_template", "1",
+//            "-use_timeline", "1",
+//            "-init_seg_name", "init-$RepresentationID$.m4s",
+//            "-media_seg_name", "chunk-$RepresentationID$-$Number$.m4s",
+//            "-adaptation_sets", "id=0,streams=v id=1,streams=a",
+//            outputDir.resolve("manifest.mpd").toString()
+//        );
+
+
 
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(true);
@@ -313,21 +339,51 @@ public class VideoTranscodingService {
         }
     }
 
-    private void uploadDashFiles(UUID videoId, Path outputDir, String quality) throws Exception {
-        log.info("Uploading DASH files to MinIO for video {}", videoId);
+    private void uploadDashFiles(String objectKey, Path outputDir, String quality) throws Exception {
+        log.info("Uploading DASH files to MinIO for video {}", objectKey);
         String bucket = resolveBucketForQuality(quality);
-        String basePath = "videos/" + videoId + "/dash/";
+        String basePath =  "/"+objectKey + "/dash/";
         Files.walk(outputDir)
             .filter(Files::isRegularFile)
             .forEach(filePath -> {
                 String fileName = filePath.getFileName().toString();
-                String objectKey = basePath + fileName;
+                String objectKeyPath = basePath + fileName;
                 try {
                     long size = Files.size(filePath);
                     try (FileInputStream fis = new FileInputStream(filePath.toFile())) {
                         PutObjectArgs putArgs = PutObjectArgs.builder()
                                 .bucket(bucket)
-                                .object(objectKey)
+                                .object(objectKeyPath)
+                                .stream(fis, size, -1)
+                                .contentType(getContentType(fileName))
+                                .build();
+
+                        minioClient.putObject(putArgs);
+                        log.info("Uploaded DASH file: {} to {} bucket", objectKey, bucket);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to upload DASH file: {} to {} bucket", filePath, bucket, e);
+                }
+            });
+    }
+
+    private void uploadDashFiles(String objectKey, Path outputDir) throws Exception {
+        log.info("Uploading DASH files to MinIO for video {}", objectKey);
+        String bucket = minioProperties.getBucket();
+        String basePath = objectKey + "/dash/";
+        log.info("Dash Path Directory: {}", basePath);
+        Files.walk(outputDir)
+            .filter(Files::isRegularFile)
+            .forEach(filePath -> {
+                String fileName = filePath.getFileName().toString();
+                String objectKeyPath = basePath + fileName;
+                log.info("Dash Path Full Directory: {}", objectKeyPath);
+                try {
+                    long size = Files.size(filePath);
+                    try (FileInputStream fis = new FileInputStream(filePath.toFile())) {
+                        PutObjectArgs putArgs = PutObjectArgs.builder()
+                                .bucket(bucket)
+                                .object(objectKeyPath)
                                 .stream(fis, size, -1)
                                 .contentType(getContentType(fileName))
                                 .build();
@@ -350,11 +406,10 @@ public class VideoTranscodingService {
         return "application/octet-stream";
     }
 
-    @Transactional
-    protected void createDashQualityRecords(UUID videoId, Path outputDir) throws Exception {
+    protected void createDashQualityRecords(UUID videoId, String objectKey) throws Exception {
         log.info("Creating DASH quality records for video {}", videoId);
 
-        String manifestKey = "videos/" + videoId + "/dash/manifest.mpd";
+        String manifestKey = objectKey + "/dash/manifest.mpd";
 
         // Create records for each quality representation
         List<VideoQuality> qualities = Arrays.asList(
@@ -373,6 +428,7 @@ public class VideoTranscodingService {
             videoQuality.setObjectKey(manifestKey); // All qualities point to the same manifest
             videoQuality.setSizeBytes(0L); // Size not applicable for manifest
             videoQuality.setContentType("application/dash+xml");
+            videoQuality.setQualityBucketName(minioProperties.getBucket());
             videoQuality.setStatus("COMPLETED");
 
             qualityPersistenceService.saveQuality(videoQuality);
@@ -428,10 +484,10 @@ public class VideoTranscodingService {
             log.info("Created temp output directory: {}", tempOutputDir);
 
             // Run FFmpeg to create DASH for this quality
-            createDashWithFFmpegForQuality(tempInputPath, tempOutputDir, quality);
+            createDashWithFFmpeg(tempInputPath, tempOutputDir, quality);
 
             // Upload DASH files to MinIO
-            uploadDashFiles(videoId, tempOutputDir, quality);
+            uploadDashFiles(originalObjectKey.split("\\.")[0], tempOutputDir, quality);
 
             // Create database record for this quality
             createDashQualityRecord(videoId, tempOutputDir, quality);
@@ -490,6 +546,185 @@ public class VideoTranscodingService {
 
     public String resolveBucketForQuality(String quality){
         return this.minioProperties.getQualityBuckets().get(quality.toLowerCase());
+    }
+
+    public static List<String> buildDashCommandWithoutFilterComplex(
+            Path inputFile,
+            Path outputDir,
+            List<VideoQuality> qualities
+    ) {
+        List<String> command = new ArrayList<>();
+
+        command.add("ffmpeg");
+        command.add("-y");
+        command.add("-i");
+        command.add(inputFile.toString());
+
+        // =====================
+        // Map same video N times
+        // =====================
+        for (int i = 0; i < qualities.size(); i++) {
+            command.add("-map");
+            command.add("0:v:0");
+        }
+
+        // =====================
+        // Video settings
+        // =====================
+        command.add("-c:v");
+        command.add("libx264");
+        command.add("-preset");
+        command.add("fast");
+        command.add("-profile:v");
+        command.add("main");
+
+        for (int i = 0; i < qualities.size(); i++) {
+            VideoQuality q = qualities.get(i);
+
+            command.add("-b:v:" + i);
+            command.add(q.bitrate);
+
+            command.add("-s:v:" + i);
+            command.add(q.resolution);
+
+            command.add("-vf:v:" + i);
+            command.add("setsar=1");
+        }
+
+        // =====================
+        // GOP alignment
+        // =====================
+        command.add("-g");
+        command.add("48");
+        command.add("-keyint_min");
+        command.add("48");
+        command.add("-sc_threshold");
+        command.add("0");
+
+        // =====================
+        // Audio
+        // =====================
+        command.add("-map");
+        command.add("0:a?");
+        command.add("-c:a");
+        command.add("aac");
+        command.add("-b:a");
+        command.add("128k");
+
+        // =====================
+        // DASH packaging
+        // =====================
+        command.add("-f");
+        command.add("dash");
+        command.add("-seg_duration");
+        command.add("10");
+        command.add("-use_template");
+        command.add("1");
+        command.add("-use_timeline");
+        command.add("1");
+        command.add("-init_seg_name");
+        command.add("init-$RepresentationID$.m4s");
+        command.add("-media_seg_name");
+        command.add("chunk-$RepresentationID$-$Number$.m4s");
+        command.add("-adaptation_sets");
+        command.add("id=0,streams=v id=1,streams=a");
+
+        command.add(outputDir.resolve("manifest.mpd").toString());
+
+        return command;
+    }
+
+    public static List<String> buildDashCommandWithFilterComplex(
+            Path inputFile,
+            Path outputDir,
+            List<VideoQuality> qualities
+    ) {
+        List<String> command = new ArrayList<>();
+
+        command.add("ffmpeg");
+        command.add("-y");
+        command.add("-i");
+        command.add(inputFile.toString());
+
+        // =====================
+        // Build filter_complex
+        // =====================
+        StringBuilder filter = new StringBuilder("[0:v]split=" + qualities.size());
+
+        for (int i = 0; i < qualities.size(); i++) {
+            filter.append("[v").append(i).append("]");
+        }
+        filter.append(";");
+
+        for (int i = 0; i < qualities.size(); i++) {
+            VideoQuality q = qualities.get(i);
+            filter.append("[v").append(i).append("]")
+                    .append("scale=")
+                    .append(q.resolution.replace("x", ":"))
+                    .append(",setsar=1[v")
+                    .append(i)
+                    .append("out];");
+        }
+        filter.setLength(filter.length() - 1);
+
+        command.add("-filter_complex");
+        command.add(filter.toString());
+
+        // =====================
+        // Map video streams
+        // =====================
+        for (int i = 0; i < qualities.size(); i++) {
+            command.add("-map");
+            command.add("[v" + i + "out]");
+            command.add("-c:v:" + i);
+            command.add("libx264");
+            command.add("-b:v:" + i);
+            command.add(qualities.get(i).bitrate);
+        }
+
+        // =====================
+        // GOP alignment (VERY IMPORTANT)
+        // =====================
+        command.add("-profile:v");
+        command.add("main");
+        command.add("-g");
+        command.add("48");
+        command.add("-keyint_min");
+        command.add("48");
+        command.add("-sc_threshold");
+        command.add("0");
+
+        // =====================
+        // Audio (safe mapping)
+        // =====================
+        command.add("-map");
+        command.add("0:a?");
+        command.add("-c:a");
+        command.add("aac");
+        command.add("-b:a");
+        command.add("128k");
+
+        // =====================
+        // DASH packaging
+        // =====================
+        command.add("-f");
+        command.add("dash");
+        command.add("-seg_duration");
+        command.add("10");
+        command.add("-use_template");
+        command.add("1");
+        command.add("-use_timeline");
+        command.add("1");
+        command.add("-init_seg_name");
+        command.add("init-$RepresentationID$.m4s");
+        command.add("-media_seg_name");
+        command.add("chunk-$RepresentationID$-$Number$.m4s");
+//        command.add("-adaptation_sets");
+//        command.add("id=0,streams=v id=1,streams=a");
+
+        command.add(outputDir.resolve("manifest.mpd").toString());
+
+        return command;
     }
 
 }

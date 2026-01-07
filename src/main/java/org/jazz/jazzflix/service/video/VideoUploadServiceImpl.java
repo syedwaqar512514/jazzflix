@@ -1,7 +1,6 @@
 package org.jazz.jazzflix.service.video;
 
 import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
 import org.jazz.jazzflix.config.storage.MinioProperties;
 import org.jazz.jazzflix.dto.VideoUploadResponse;
 import org.jazz.jazzflix.dto.WatchModel;
@@ -19,15 +18,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import ws.schild.jave.Encoder;
-import ws.schild.jave.MultimediaObject;
-import ws.schild.jave.encode.EncodingAttributes;
-import ws.schild.jave.encode.VideoAttributes;
-import ws.schild.jave.info.MultimediaInfo;
-import ws.schild.jave.info.VideoInfo;
 
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
@@ -36,7 +28,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Service
 public class VideoUploadServiceImpl implements VideoUploadService {
@@ -50,7 +41,8 @@ public class VideoUploadServiceImpl implements VideoUploadService {
     private final KafkaTemplate<String, VideoUploadEvent> kafkaTemplate;
     private final KafkaTemplate<String, VideoTranscodingEvent> transcodingKafkaTemplate;
     private final String videoUploadTopic;
-    private final String videoTranscodingTopic;
+    private final String videoTranscodingSBTopic;
+    private final String videoTranscodingMBTopic;
     private final ProgressService progressService;
     private final VideoTranscodingService transcodingService;
     private final CustomUserDetailsService userDetailsService;
@@ -61,7 +53,8 @@ public class VideoUploadServiceImpl implements VideoUploadService {
                                   KafkaTemplate<String, VideoUploadEvent> kafkaTemplate,
                                   KafkaTemplate<String, VideoTranscodingEvent> transcodingKafkaTemplate,
                                   @Value("${app.kafka.topics.video-upload:video.uploaded}") String videoUploadTopic,
-                                  @Value("${app.kafka.topics.video-transcoding:video.transcoding}") String videoTranscodingTopic,
+                                  @Value("${app.kafka.topics.video-transcoding-single-bitrate:video.transcoding.single.bitrate}") String videoTranscodingSBTopic,
+                                  @Value("${app.kafka.topics.video-transcoding-multi-bitrate:video.transcoding.multi.bitrate}") String videoTranscodingMBTopic,
                                   ProgressService progressService,
                                   VideoTranscodingService transcodingService, CustomUserDetailsService userDetailsService) {
         this.minioClient = minioClient;
@@ -71,7 +64,8 @@ public class VideoUploadServiceImpl implements VideoUploadService {
         this.kafkaTemplate = kafkaTemplate;
         this.transcodingKafkaTemplate = transcodingKafkaTemplate;
         this.videoUploadTopic = videoUploadTopic;
-        this.videoTranscodingTopic = videoTranscodingTopic;
+        this.videoTranscodingSBTopic = videoTranscodingSBTopic;
+        this.videoTranscodingMBTopic = videoTranscodingMBTopic;
         this.progressService = progressService;
         this.transcodingService = transcodingService;
         this.userDetailsService = userDetailsService;
@@ -116,9 +110,11 @@ public class VideoUploadServiceImpl implements VideoUploadService {
         // Save metadata to database
         progressService.updateStatus(uploadId, "PROCESSING", "Saving video metadata...");
 
+        String objectKeyUploadPath = objectKey.split("\\.")[0]+"/"+objectKey;
+
         TblVideoAssest asset = new TblVideoAssest();
         asset.setOriginalFileName(originalFileName);
-        asset.setObjectKey(objectKey);
+        asset.setObjectKey(objectKeyUploadPath);
         asset.setContentType(file.getContentType());
         asset.setSizeBytes(file.getSize());
         asset.setStatus("UPLOADED");
@@ -131,19 +127,31 @@ public class VideoUploadServiceImpl implements VideoUploadService {
         // Create original quality record
         progressService.updateStatus(uploadId, "TRANSCODING", "Starting video transcoding...");
 
+//        // Send transcoding tasks to Kafka for each quality
+//        List<String> qualities = Arrays.asList("1080p");
+//        for (String quality : qualities) {
+//            VideoTranscodingEvent transcodingEvent = new VideoTranscodingEvent(savedAsset.getId(), objectKey, file.getContentType(), quality);
+//            transcodingKafkaTemplate.send(videoTranscodingSBTopic, savedAsset.getId().toString() + "-" + quality, transcodingEvent)
+//                    .whenComplete((result, throwable) -> {
+//                        if (throwable != null) {
+//                            log.error("Failed to send transcoding event for {} quality {}", savedAsset.getId(), quality, throwable);
+//                        } else {
+//                            log.info("Sent transcoding event for {} quality {} to topic {}", savedAsset.getId(), quality, videoTranscodingSBTopic);
+//                        }
+//                    });
+//        }
+
         // Send transcoding tasks to Kafka for each quality
-        List<String> qualities = Arrays.asList("1080p");
-        for (String quality : qualities) {
-            VideoTranscodingEvent transcodingEvent = new VideoTranscodingEvent(savedAsset.getId(), objectKey, file.getContentType(), quality);
-            transcodingKafkaTemplate.send(videoTranscodingTopic, savedAsset.getId().toString() + "-" + quality, transcodingEvent)
-                    .whenComplete((result, throwable) -> {
-                        if (throwable != null) {
-                            log.error("Failed to send transcoding event for {} quality {}", savedAsset.getId(), quality, throwable);
-                        } else {
-                            log.info("Sent transcoding event for {} quality {} to topic {}", savedAsset.getId(), quality, videoTranscodingTopic);
-                        }
-                    });
-        }
+        String quality = "multi-bitrate";
+        VideoTranscodingEvent transcodingEvent = new VideoTranscodingEvent(savedAsset.getId(), objectKey, file.getContentType(), quality);
+        transcodingKafkaTemplate.send(videoTranscodingMBTopic, savedAsset.getId().toString() + "-" + quality, transcodingEvent)
+                .whenComplete((result, throwable) -> {
+                    if (throwable != null) {
+                        log.error("Failed to send transcoding event for {} quality {}", savedAsset.getId(), quality, throwable);
+                    } else {
+                        log.info("Sent transcoding event for {} quality {} to topic {}", savedAsset.getId(), quality, videoTranscodingSBTopic);
+                    }
+                });
 
         OffsetDateTime uploadedAt = OffsetDateTime.ofInstant(savedAsset.getCreatedAt().toInstant(), ZoneOffset.UTC);
 
@@ -194,11 +202,12 @@ public class VideoUploadServiceImpl implements VideoUploadService {
         List<TblVideoAssest> videos = this.tblVideoAssestRepository.findAllByOwnerId(userId);
         videoList = videos.stream()
                 .map(video -> {
+                    String manifestPath = video.getObjectKey().split("/")[0]+"/dash/manifest.mpd";
                     return VideoAssetDto.builder()
                             .id(video.getId())
                             .ownerId(video.getOwnerId())
                             .thumbnail(video.getThumbnailObjectKey())
-                            .manifestPath(video.getId().toString())
+                            .manifestPath(manifestPath)
                             .sizeBytes((int)video.getSizeBytes())
                             .bucket(video.getBucket())
                             .build();
@@ -260,7 +269,8 @@ public class VideoUploadServiceImpl implements VideoUploadService {
 
 //            String thumbnailKey = "thumbnails/" +
 //                    videoObjectKey.replaceAll("\\.[^.]+$", ".jpg");
-            String thumbnailKey = "thumbnails/" + videoObjectKey.replace(videoObjectKey.substring(videoObjectKey.lastIndexOf('.') + 1), "jpg");
+            // videoObjectKey/thumbnail/videoObjectKey.jpg
+            String thumbnailKey = videoObjectKey.split("\\.")[0]+"/thumbnail/" + videoObjectKey.replace(videoObjectKey.substring(videoObjectKey.lastIndexOf('.') + 1), "jpg");
 
 
             minioService.uploadThumbnail(thumbnailKey, tempThumb);

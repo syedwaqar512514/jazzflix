@@ -1,6 +1,8 @@
 package org.jazz.jazzflix.config.security;
 
 import org.jazz.jazzflix.config.security.jwt.JwtAuthenticationFilter;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -10,6 +12,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.FilterChainProxy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -45,22 +48,23 @@ public class SecurityConfig {
                         .requestMatchers(
 //                                "/jazz/js/common-auth.js",
                                 "/common-auth.js",
-                                "/upload-progress.html",
+//                                "/upload-progress.html",
                                 "/auth.html",
                                 "/login.html",
-                                "/dashboard-user.html",
-                                "/dashboard-admin.html",
-                                "/manage-user.html",
-                                "/update-user.html",
+//                                "/dashboard-user.html",
+//                                "/dashboard-admin.html",
+//                                "/manage-user.html",
+//                                "/update-user.html",
                                 "/jazz/register.html",
                                 "/auth/login",
+                                "/auth/debug",
                                 "/api/users/register",
-                                "/video/api/dash/**",
-                                "/video/api/thumbnail/**",
-                                "/video/api/upload",
-                                "/jazz/auth/login",
-                                "/jazz/video/api/getAll",
-                                "/jazz/video/api/upload"
+//                                "/video/api/dash/**",
+//                                "/video/api/thumbnail/**",
+//                                "/video/api/upload",
+                                "/jazz/auth/login"
+//                                "/jazz/video/api/getAll",
+//                                "/jazz/video/api/upload"
                         ).permitAll()
 
                         // Upload & Management
@@ -94,5 +98,17 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    @Bean
+    ApplicationRunner debugSecurityFilters(ApplicationContext context) {
+        return args -> {
+            FilterChainProxy proxy = context.getBean(FilterChainProxy.class);
+            proxy.getFilterChains().forEach(chain -> {
+                System.out.println("🔗 Security chain:");
+                chain.getFilters().forEach(f ->
+                        System.out.println("  ➜ " + f.getClass().getSimpleName()));
+            });
+        };
     }
 }

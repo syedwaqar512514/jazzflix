@@ -29,6 +29,8 @@ public class MinioConfig {
                     ensureBucketExists(client, properties.getBucket());
                     // ensure metadata bucket exists
                     ensureBucketExists(client, properties.getMetadataBucket());
+                    // ensure baseline bucket exists
+                    ensureBucketExists(client, properties.getBaselineBucket());
                     // ensure quality buckets exists
                     for(String qBucket : properties.getQualityBuckets().values()){
                         ensureBucketExists(client, qBucket);

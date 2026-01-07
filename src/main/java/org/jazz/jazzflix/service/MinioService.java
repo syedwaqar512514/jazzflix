@@ -33,10 +33,11 @@ public class MinioService {
     }
 
     public void uploadFile(MultipartFile file, String objectKey, String uploadId) {
+        String objectPath = "/"+objectKey.split("\\.")[0]+"/"+objectKey;
         try {
                 PutObjectArgs.Builder builder = PutObjectArgs.builder()
                         .bucket(minioProperties.getBucket())
-                        .object(objectKey)
+                        .object(objectPath)
                         .stream(file.getInputStream(), file.getSize(), -1);
 
                 if (file.getContentType() != null) {

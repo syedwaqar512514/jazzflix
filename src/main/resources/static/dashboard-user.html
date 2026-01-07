@@ -94,16 +94,17 @@
                          style="border-radius:5px">
                 </td>
                 <td>${v.id}</td>
-                <td style="word-break:break-all">${buildManifestUrl(v.id)}</td>
+                <td style="word-break:break-all">${buildManifestUrl(v.manifestPath, v.bucket)}</td>
                 <td>${sizeMB} MB</td>
                 <td>${v.bucket}</td>
                 <td>
-                    <button onclick="playDash('${v.id}')">
+                    <button onclick="playDash('${v.manifestPath}')">
                         Play
                     </button>
                 </td>
                 <td>
-                  <select onchange="playDash('${v.id}', this.value)">
+                  <select onchange="changeQuality(this.value)">
+                    <option value="auto">Auto</option>
                     <option value="360p">360p</option>
                     <option value="480p">360p</option>
                     <option value="720p">720p</option>
@@ -119,31 +120,87 @@
     document.getElementById("videos").innerHTML = html;
   }
 
-  function buildManifestUrl(videoId, quality = "360p") {
-    return `http://localhost:9080/videos-q${quality}/videos/${videoId}/dash/manifest.mpd`;
+  function buildManifestUrl(manifestPath, bucket = "jazzflix-videos", quality = "360p") {
+    return `http://localhost:9080/${bucket}/${manifestPath}`;
   }
 
+
+  function changeQuality(height) {
+    if (!dashPlayer) return;
+
+    // Auto mode
+    if (height === "auto") {
+      dashPlayer.setAutoSwitchQualityFor("video", true);
+      return;
+    }
+
+    dashPlayer.setAutoSwitchQualityFor("video", false);
+
+    const representations = dashPlayer.getBitrateInfoListFor("video");
+
+    const target = representations.find(r => r.height == height);
+
+    if (!target) {
+      alert("Requested quality not available");
+      return;
+    }
+
+    dashPlayer.setQualityFor(
+            "video",
+            target.qualityIndex,
+            true
+    );
+  }
 
 
   /* =======================
      Play DASH Stream
   ======================= */
-  function playDash(videoId) {
+  function playDash(manifestPath) {
     const videoElement = document.getElementById("videoPlayer");
-    const manifestUrl = buildManifestUrl(videoId);
+    const manifestUrl = buildManifestUrl(manifestPath);
 
     if (dashPlayer) {
       dashPlayer.reset();
     }
 
     dashPlayer = dashjs.MediaPlayer().create();
+
+    // Auto Switching Quality
+    dashPlayer.updateSettings({
+      streaming: {
+        abr: {
+          autoSwitchBitrate: {
+            video: false,
+            audio: true
+          }
+        }
+      }
+    });
+
+    //
+    // dashPlayer.getVideoTracks()
+
     dashPlayer.initialize(videoElement, manifestUrl, true);
+
+    dashPlayer.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, function () {
+      console.log("Stream Initialized. Fetching bitrate info...");
+
+      // Get available video bitrates
+      dashPlayer.get
+      const videoQualities = dashPlayer.getBitrateInfoListFor("video");
+
+      videoQualities.forEach((info) => {
+        console.log(`Index: ${info.qualityIndex} | Bitrate: ${info.bitrate} bps | Res: ${info.width}x${info.height}`);
+      });
+    });
 
     dashPlayer.on(dashjs.MediaPlayer.events.ERROR, e => {
       console.error("DASH error", e);
       alert("Failed to play video");
     });
   }
+
 
 
 

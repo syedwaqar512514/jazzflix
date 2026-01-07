@@ -14,6 +14,7 @@ public class MinioProperties {
     private String accessKey;
     private String secretKey;
     private String bucket;
+    private String baselineBucket;
     private boolean ensureBucket = true;
     private Map<String, String> qualityBuckets;
     private String metadataBucket;
