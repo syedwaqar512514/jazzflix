@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JazzFlix Auth</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            display: flex;
+            justify-content: center;
+            padding-top: 50px;
+        }
+        .card {
+            background: white;
+            padding: 25px;
+            width: 400px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        button {
+            background: #007bff;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .danger {
+            background: #dc3545;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🎬 JazzFlix User</h2>
+
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
+
+    <hr>
+
+    <button onclick="updateUser()">Update Profile</button>
+    <button class="danger" onclick="deleteUser()">Delete Account</button>
+
+    <button onclick="goToUpload()">Go to Upload Page</button>
+
+    <div id="msg"></div>
+</div>
+
+<script>
+    const API = "/jazz/auth";
+    const REG_API = "/jazz/api/users";
+
+    function showMsg(text, success=true) {
+        const msg = document.getElementById("msg");
+        msg.className = success ? "success" : "error";
+        msg.innerText = text;
+    }
+
+    function saveToken(token) {
+        localStorage.setItem("jwt", token);
+    }
+
+    function getToken() {
+        return localStorage.getItem("jwt");
+    }
+
+    async function login() {
+        const res = await fetch(`${API}/login`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                data: {
+                    email: document.getElementById("email").value,
+                    password: document.getElementById("password").value
+                }
+            })
+        });
+
+        const json = await res.json();
+        if (res.ok && json.success) {
+            saveToken(json.data.accessToken);
+            showMsg("Login successful");
+        } else {
+            showMsg(json.message || "Login Failed", false);
+        }
+    }
+
+    async function register() {
+        const res = await fetch(`${REG_API}/register`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                data: {
+                    email: email.value,
+                    password: password.value
+                }
+            })
+        });
+
+        const json = await res.json();
+        showMsg(json.message, json.success);
+    }
+
+    async function updateUser() {
+        const token = getToken();
+        if (!token) return showMsg("Login first", false);
+
+        const res = await fetch(`${API}/me`, {
+            method: "PUT",
+            headers: {
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                data: {
+                    password: password.value
+                }
+            })
+        });
+
+        const json = await res.json();
+        showMsg(json.message, json.success);
+    }
+
+    async function deleteUser() {
+        const token = getToken();
+        if (!token) return showMsg("Login first", false);
+    }
+</script>

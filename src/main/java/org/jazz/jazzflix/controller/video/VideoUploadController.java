@@ -2,20 +2,20 @@ package org.jazz.jazzflix.controller.video;
 
 import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
+import org.jazz.jazzflix.config.security.CustomUserDetails;
 import org.jazz.jazzflix.config.storage.MinioProperties;
-import org.jazz.jazzflix.dto.ProgressInfo;
-import org.jazz.jazzflix.dto.Response;
-import org.jazz.jazzflix.dto.VideoUploadResponse;
+import org.jazz.jazzflix.dto.*;
+import org.jazz.jazzflix.dto.video.VideoAssetDto;
 import org.jazz.jazzflix.entity.video.TblVideoAssest;
 import org.jazz.jazzflix.exception.DataNotFoundException;
 import org.jazz.jazzflix.repository.video.TblVideoAssestRepository;
 import org.jazz.jazzflix.service.ProgressService;
 import org.jazz.jazzflix.service.VideoTranscodingService;
 import org.jazz.jazzflix.service.video.VideoUploadService;
-import org.jazz.jazzflix.dto.VideoQualityDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,9 +49,10 @@ public class VideoUploadController {
     }
 
     @PostMapping("/api/upload")
-    public ResponseEntity<Response<VideoUploadResponse>> uploadVideo(@RequestParam("file") MultipartFile file,
-                                                            HttpServletRequest httpRequest) {
-        VideoUploadResponse uploadResponse = videoUploadService.handleUpload(file);
+    public ResponseEntity<Response<VideoUploadResponse>> uploadVideo(@AuthenticationPrincipal CustomUserDetails userDetails, @RequestParam("file") MultipartFile file,
+                                                                     HttpServletRequest httpRequest) {
+        UUID userId = userDetails.getUserId();
+        VideoUploadResponse uploadResponse = videoUploadService.handleUpload(file, userId);
         boolean success = true;
         String message = "Video upload initiated. Use the uploadId to track progress.";
         int status = HttpStatus.OK.value();
@@ -95,6 +96,22 @@ public class VideoUploadController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(progress);
+    }
+
+    @GetMapping("/api/getAll")
+    public Response<List<VideoAssetDto>> getAllVideosByUserId(@AuthenticationPrincipal CustomUserDetails userDetails, HttpServletRequest request) {
+            List<VideoAssetDto> videos = this.videoUploadService.getAllVideosByUserId(userDetails.getUserId());
+        if (videos == null) {
+            return null;
+        }
+        return new Response<List<VideoAssetDto>>(
+                true,
+                "Video fetched Successfully",
+                videos,
+                HttpStatus.OK.value(),
+                request.getRequestURI(),
+                LocalDateTime.now().toString()
+        );
     }
 
     @GetMapping("/api/qualities/{videoId}")
